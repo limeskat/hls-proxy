@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hlsproxy"
+version = "0.1.0"
+description = "Play protected HLS streams locally using curl_cffi and mpv"
+requires-python = ">=3.8"
+dependencies = [
+    "curl_cffi>=0.5.0",
+    "requests>=2.25.0",
+]
+
+[project.scripts]
+hlsproxy = "hlsproxy.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["hlsproxy*"]
