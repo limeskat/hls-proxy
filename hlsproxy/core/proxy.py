@@ -57,11 +57,18 @@ class HLSProxyHandler(BaseHTTPRequestHandler):
         lines = text.splitlines()
         
         # Clean custom junk before #EXTM3U (like "caxi" or "load")
-        start_idx = 0
+        start_idx = -1
         for i, line in enumerate(lines):
-            if line.strip() == "#EXTM3U":
+            if line.strip().startswith("#EXTM3U"):
                 start_idx = i
                 break
+                
+        if start_idx == -1:
+            print(f"[!] Invalid playlist: No #EXTM3U found in {url}")
+            self.send_response(502)
+            self.end_headers()
+            return
+            
         lines = lines[start_idx:]
         
         host_header = self.headers.get("Host", f"127.0.0.1:{self.server.server_address[1]}")
