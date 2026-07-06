@@ -43,14 +43,66 @@ def main():
                         help="curl_cffi TLS profile (default: chrome124)")
     parser.add_argument("--no-play", action="store_true",
                         help="Don't launch mpv; just print the proxy URL")
+    parser.add_argument("--resolvers-source", help="Path to a directory containing external resolver scripts")
+    parser.add_argument("--install-resolver", help="Install a custom resolver Python script into the config folder")
+    parser.add_argument("--remove-resolver", help="Remove an installed resolver by name (e.g. 'foxtrend')")
     parser.add_argument("--referer", help="Manually override the Referer header")
     parser.add_argument("--origin", help="Manually override the Origin header")
     
     args = parser.parse_args()
     
+    if args.install_resolver:
+        import os, shutil
+        config_dir = os.path.expanduser("~/.config/hlsproxy/resolvers")
+        os.makedirs(config_dir, exist_ok=True)
+        
+        target = args.install_resolver
+        if not os.path.exists(target):
+            print(f"[!] Error: {target} does not exist.")
+            return
+            
+        if os.path.isfile(target):
+            dest = os.path.join(config_dir, os.path.basename(target))
+            shutil.copy(target, dest)
+            print(f"[*] Installed resolver to {dest}")
+        elif os.path.isdir(target):
+            # Check if it has a 'resolvers' subfolder (e.g. a cloned repo)
+            if os.path.isdir(os.path.join(target, "resolvers")):
+                source_dir = os.path.join(target, "resolvers")
+            else:
+                source_dir = target
+                
+            count = 0
+            for item in os.listdir(source_dir):
+                if item.endswith(".py") and item not in ("__init__.py", "base.py"):
+                    src = os.path.join(source_dir, item)
+                    dest = os.path.join(config_dir, item)
+                    shutil.copy(src, dest)
+                    print(f"[*] Installed resolver {item}")
+                    count += 1
+            if count == 0:
+                print(f"[!] No valid resolver scripts found in {source_dir}")
+            else:
+                print(f"[*] Successfully installed {count} resolvers.")
+        return
+
+    if args.remove_resolver:
+        import os
+        config_dir = os.path.expanduser("~/.config/hlsproxy/resolvers")
+        name = args.remove_resolver
+        if not name.endswith(".py"):
+            name += ".py"
+        target = os.path.join(config_dir, name)
+        if os.path.exists(target):
+            os.remove(target)
+            print(f"[*] Removed resolver {target}")
+        else:
+            print(f"[!] Error: Resolver {name} not found in {config_dir}")
+        return
+        
     if args.list_resolvers:
         print("Available resolvers:")
-        for cls in discover_resolvers():
+        for cls in discover_resolvers(args.resolvers_source):
             instance = cls()
             domains = ", ".join(instance.domains) if instance.domains else "(catch-all)"
             print(f"  {cls.__name__:30s}  domains: {domains}")
@@ -62,7 +114,7 @@ def main():
     
     print(f"[*] Resolving: {args.url}")
     try:
-        resolver = find_resolver(args.url)
+        resolver = find_resolver(args.url, args.resolvers_source)
         print(f"[*] Using resolver: {resolver.__class__.__name__}")
         kwargs = {}
         if args.referer:
@@ -117,7 +169,14 @@ def main():
     
     print(f"[*] Launching mpv...\n")
     try:
-        extra_args = []
+        extra_args = [
+            "--profile=fast",
+            "--hwdec=auto",
+            "--cache=yes",
+            "--demuxer-max-bytes=150M",
+            "--demuxer-max-back-bytes=50M"
+        ]
+        
         if result.stream.subtitles:
             for sub in result.stream.subtitles:
                 encoded_sub_url = urllib.parse.quote(sub["url"], safe="")
@@ -133,3 +192,6 @@ def main():
     finally:
         print("\n[*] Shutting down proxy.")
         server.shutdown()
+
+if __name__ == "__main__":
+    main()
