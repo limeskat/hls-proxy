@@ -3,7 +3,8 @@ from hlsproxy.resolvers.jwplayer import JWPlayerResolver
 class VidwishResolver(JWPlayerResolver):
     """Resolver for vidwish.live streams."""
     domains = [
-        "vidwish.live"
+        "vidwish.live",
+        "megaplay.buzz"
     ]
     
     strict_domain_headers = True
