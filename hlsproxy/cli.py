@@ -64,7 +64,10 @@ def main():
     try:
         resolver = find_resolver(args.url)
         print(f"[*] Using resolver: {resolver.__class__.__name__}")
-        result = resolver.resolve(args.url)
+        kwargs = {}
+        if args.referer:
+            kwargs["referer"] = args.referer
+        result = resolver.resolve(args.url, **kwargs)
     except ResolverError as e:
         print(f"[!] Resolution failed: {e}")
         sys.exit(1)
@@ -75,10 +78,10 @@ def main():
     # Override impersonate if user specified
     result.stream.impersonate = args.impersonate
     
-    # Apply manual header overrides
-    if args.referer:
+    # Apply manual header overrides only if not already captured by the resolver
+    if args.referer and "Referer" not in result.stream.headers:
         result.stream.headers["Referer"] = args.referer
-    if args.origin:
+    if args.origin and "Origin" not in result.stream.headers:
         result.stream.headers["Origin"] = args.origin
     
     print(f"[+] Stream:  {result.stream.m3u8_url}")

@@ -14,7 +14,7 @@ class GoozResolver(BaseResolver):
     def can_handle(cls, url: str) -> bool:
         return "gooz.aapmains.net" in url.lower()
         
-    def resolve(self, url: str) -> ResolverResult:
+    def resolve(self, url: str, **kwargs) -> ResolverResult:
         try:
             # Impersonate a browser to fetch the page
             r = requests.get(url, impersonate="chrome124")

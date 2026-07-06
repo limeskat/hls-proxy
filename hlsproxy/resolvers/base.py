@@ -10,7 +10,7 @@ class BaseResolver(ABC):
     priority: int = 100
     
     @abstractmethod
-    def resolve(self, url: str) -> ResolverResult:
+    def resolve(self, url: str, **kwargs) -> ResolverResult:
         """
         Take a user-provided URL, return a ResolverResult.
         Raise ResolverError if the stream cannot be resolved.

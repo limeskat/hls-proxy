@@ -8,7 +8,10 @@ class GenericResolver(BaseResolver):
     catch_all = True
     priority = 999  # Always tried last
     
-    def resolve(self, url: str) -> ResolverResult:
+    def resolve(self, url: str, **kwargs) -> ResolverResult:
+        """
+        Just fetches the m3u8 directly.
+        """
         # We no longer strictly check for ".m3u8" because many custom playlists
         # use extension-less paths (like /playlist/123/caxi). We trust the user's input.
         

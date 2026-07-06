@@ -19,7 +19,11 @@ class JWPlayerResolver(BaseResolver):
     
     _is_abstract: bool = True
 
-    def resolve(self, url: str) -> ResolverResult:
+    def resolve(self, url: str, **kwargs) -> ResolverResult:
+        """
+        Uses Playwright to intercept the m3u8 and subtitles on page load.
+        """
+        referer = kwargs.get("referer")
         stream_url = None
         captured_headers = {}
         subtitles = []
@@ -92,7 +96,10 @@ class JWPlayerResolver(BaseResolver):
             
             try:
                 # Load the page and wait for the network to idle
-                page.goto(url, wait_until="domcontentloaded", timeout=15000)
+                kwargs_goto = {"wait_until": "domcontentloaded", "timeout": 15000}
+                if referer:
+                    kwargs_goto["referer"] = referer
+                page.goto(url, **kwargs_goto)
                 
             except Exception as e:
                 pass
