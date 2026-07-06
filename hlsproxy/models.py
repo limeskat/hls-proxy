@@ -11,6 +11,7 @@ class StreamInfo:
     impersonate: str = "chrome124"
     cookies: dict = field(default_factory=dict)
     proxy: Optional[str] = None  # upstream HTTP/SOCKS proxy
+    subtitles: list = field(default_factory=list) # List of dicts like {'url': ..., 'lang': ...}
 
     def __post_init__(self):
         if not self.base_url:

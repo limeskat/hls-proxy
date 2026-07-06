@@ -37,7 +37,7 @@ class HLSProxyHandler(BaseHTTPRequestHandler):
             if req_type == "m3u8":
                 self.fetch_and_rewrite(upstream_url)
             else:
-                self.fetch_and_stream(upstream_url)
+                self.fetch_and_stream(upstream_url, req_type=req_type)
         else:
             self.send_response(404)
             self.end_headers()
@@ -76,8 +76,10 @@ class HLSProxyHandler(BaseHTTPRequestHandler):
         
         def make_proxy_url(absolute_uri, is_m3u8=False):
             encoded_uri = urllib.parse.quote(absolute_uri, safe="")
-            type_param = "m3u8" if is_m3u8 else "seg"
-            return f"{proxy_host}/req?type={type_param}&url={encoded_uri}"
+            if is_m3u8:
+                return f"{proxy_host}/req.m3u8?type=m3u8&url={encoded_uri}&ext=.m3u8"
+            else:
+                return f"{proxy_host}/req.ts?type=seg&url={encoded_uri}&ext=.ts"
 
         for i in range(len(lines)):
             stripped = lines[i].strip()
@@ -121,30 +123,82 @@ class HLSProxyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def fetch_and_stream(self, upstream_url):
+    def fetch_and_stream(self, upstream_url, req_type="seg"):
         session = self.server.session
         headers = {}
-        if "Range" in self.headers:
+        # We explicitly DO NOT forward the Range header for segments to avoid offset corruption.
+        # But for subtitles, it's fine.
+        if req_type == "sub" and "Range" in self.headers:
             headers["Range"] = self.headers["Range"]
             
         try:
             r = session.get(upstream_url, stream=True, timeout=15, headers=headers)
             r.raise_for_status()
             
-            self.send_response(r.status_code)
-            self.send_header("Content-Type", r.headers.get("Content-Type", "video/MP2T"))
-            if "Content-Length" in r.headers:
-                self.send_header("Content-Length", r.headers["Content-Length"])
-            if "Content-Range" in r.headers:
-                self.send_header("Content-Range", r.headers["Content-Range"])
-            self.end_headers()
+            # If it's a subtitle, just stream it directly
+            if req_type == "sub":
+                self.send_response(r.status_code)
+                self.send_header("Content-Type", "text/vtt")
+                if "Content-Length" in r.headers:
+                    self.send_header("Content-Length", r.headers["Content-Length"])
+                if "Content-Range" in r.headers:
+                    self.send_header("Content-Range", r.headers["Content-Range"])
+                if "Accept-Ranges" in r.headers:
+                    self.send_header("Accept-Ranges", r.headers["Accept-Ranges"])
+                self.end_headers()
+                for chunk in r.iter_content(chunk_size=65536):
+                    if chunk:
+                        self.wfile.write(chunk)
+                return
+                
+            # For segments, buffer first to find TS start
+            buffer = bytearray()
+            header_stripped = False
+            content_length = r.headers.get("Content-Length")
             
             for chunk in r.iter_content(chunk_size=65536):
                 if chunk:
-                    self.wfile.write(chunk)
+                    if not header_stripped:
+                        buffer.extend(chunk)
+                        if len(buffer) < 2000:
+                            continue
+                            
+                        ts_start = 0
+                        for i in range(len(buffer) - 188*3):
+                            if buffer[i] == 0x47 and buffer[i+188] == 0x47 and buffer[i+188*2] == 0x47:
+                                ts_start = i
+                                break
+                        
+                        # Now send the HTTP headers with the corrected Content-Length
+                        self.send_response(r.status_code)
+                        self.send_header("Content-Type", "video/MP2T")
+                        if content_length and content_length.isdigit():
+                            self.send_header("Content-Length", str(int(content_length) - ts_start))
+                        self.end_headers()
+                        
+                        if ts_start > 0:
+                            chunk_to_write = bytes(buffer[ts_start:])
+                        else:
+                            chunk_to_write = bytes(buffer)
+                            
+                        self.wfile.write(chunk_to_write)
+                        header_stripped = True
+                        buffer = None
+                    else:
+                        self.wfile.write(chunk)
+            
+            if not header_stripped and buffer:
+                self.send_response(r.status_code)
+                self.send_header("Content-Type", "video/MP2T")
+                if content_length and content_length.isdigit():
+                    self.send_header("Content-Length", content_length)
+                self.end_headers()
+                self.wfile.write(bytes(buffer))
+                
         except Exception as e:
-            # We don't print full URL to avoid spam, just a snippet
-            print(f"[!] Segment fetch failed: {e}")
+            err_str = str(e)
+            if "Broken pipe" not in err_str and "Connection reset" not in err_str:
+                print(f"[!] {req_type} fetch failed: {e}")
 
 def start_proxy(stream: StreamInfo, host: str = "0.0.0.0", port: int = 18888) -> ThreadingHTTPServer:
     """Start the proxy server in a background thread."""

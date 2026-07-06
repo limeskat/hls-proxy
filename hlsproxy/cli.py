@@ -1,6 +1,7 @@
 import sys
 import argparse
 import socket
+import urllib.parse
 from hlsproxy.resolvers import find_resolver, discover_resolvers
 from hlsproxy.resolvers.base import ResolverError
 from hlsproxy.core.proxy import start_proxy
@@ -113,7 +114,14 @@ def main():
     
     print(f"[*] Launching mpv...\n")
     try:
-        launch_mpv(local_url, title=f"{result.title} (Local Port: {port})")
+        extra_args = []
+        if result.stream.subtitles:
+            for sub in result.stream.subtitles:
+                encoded_sub_url = urllib.parse.quote(sub["url"], safe="")
+                sub_proxy_url = f"http://127.0.0.1:{port}/req.vtt?type=sub&url={encoded_sub_url}"
+                extra_args.append(f"--sub-file={sub_proxy_url}")
+                
+        launch_mpv(local_url, title=f"{result.title} (Local Port: {port})", extra_args=extra_args)
     except FileNotFoundError as e:
         print(f"[!] Error: {e}")
         print("[!] Please install mpv and ensure it is in your system's $PATH.")
