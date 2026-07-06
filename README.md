@@ -23,3 +23,5 @@ Options:
 * `--impersonate <PROFILE>`: Specify TLS fingerprint profile (default: chrome124).
 * `--no-play`: Start proxy without launching mpv.
 * `--list-resolvers`: List all loaded plugins.
+* `--referer <URL>`: Manually override the Referer header (useful for bypassing strict 403/410 errors).
+* `--origin <URL>`: Manually override the Origin header.
