@@ -33,3 +33,13 @@ This file serves as the programmatic contract for any AI agents interacting with
 ## 5. Immutable Boundaries
 * **DO NOT** add evasion libraries like `curl_cffi`, `playwright`, or `playwright-stealth` to the core `pyproject.toml`. The core repository must remain a neutral HTTP proxy. If users need them for external plugins, they must install them manually.
 * **DO NOT** modify the `pyproject.toml` unless explicitly instructed to add a standard, neutral library (like `requests`).
+
+## OpenWiki
+This repository has documentation located in the /openwiki directory.
+
+Start here:
+- [OpenWiki quickstart](openwiki/quickstart.md)
+
+OpenWiki includes repository overview, architecture notes, workflows, domain concepts, operations, integrations, testing guidance, and source maps.
+
+When working in this repository, read the OpenWiki quickstart first, then follow its links to the relevant architecture, workflow, domain, operation, and testing notes.

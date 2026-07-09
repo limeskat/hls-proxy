@@ -43,5 +43,21 @@ hlsproxy https://example.com/stream-page --resolvers-source https://github.com/u
 * `--origin <URL>`: Manually override the Origin header.
 
 ---
+## Documentation
+
+This project's documentation is maintained using [OpenWiki](https://github.com/langchain-ai/openwiki), an AI-powered documentation agent.
+
+You can view the full documentation in the `openwiki/` directory:
+- [Quickstart](openwiki/quickstart.md)
+- [Architecture](openwiki/architecture/)
+- [Development](openwiki/development/development.md)
+- [Workflows](openwiki/workflows/usage.md)
+
+To update or regenerate the documentation, use the OpenWiki CLI:
+```bash
+npx openwiki --update
+```
+
+---
 ## Disclaimer
 **hlsproxy** is a generic network utility. It does not host, store, or distribute any media content, and it has no affiliation with any third-party content providers.
