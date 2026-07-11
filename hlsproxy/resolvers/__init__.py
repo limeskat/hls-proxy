@@ -1,7 +1,7 @@
 import importlib
 import pkgutil
 from typing import List, Type
-from .base import BaseResolver
+from .base import BaseResolver, ResolverError
 
 def get_external_dir_path(external_dir: str) -> str:
     """If external_dir is a URL, clone or update it and return the local path."""
@@ -47,7 +47,7 @@ def discover_resolvers(external_dir: str = None) -> List[Type[BaseResolver]]:
     
     # Load internal resolvers
     for _, module_name, _ in pkgutil.iter_modules(__path__):
-        if module_name in ("__init__", "base"):
+        if module_name == "base":
             continue
         
         module = importlib.import_module(f".{module_name}", package=__name__)
@@ -114,4 +114,4 @@ def find_resolver(url: str, external_dir: str = None) -> BaseResolver:
         if instance.can_handle(url):
             return instance
     
-    raise RuntimeError("No resolver found. Is generic.py installed?")
+    raise ResolverError("No resolver found. Is generic.py installed?")

@@ -229,14 +229,6 @@ If the stream doesn't play:
 
 ## Advanced Usage
 
-### Use Upstream Proxy
-
-Route requests through an HTTP/SOCKS proxy:
-
-```bash
-hlsproxy https://example.com/stream-page --proxy socks5://127.0.0.1:1080
-```
-
 ### Use Custom Headers
 
 Resolvers can inject custom headers. For example, a resolver might add:

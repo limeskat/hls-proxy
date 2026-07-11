@@ -1,4 +1,5 @@
 import re
+import time
 import urllib.parse
 from abc import ABC
 
@@ -112,7 +113,6 @@ class DefaultProxyDelegate(BaseProxyDelegate):
         headers["Accept-Encoding"] = "identity"
             
         max_retries = 3
-        import time
         for attempt in range(max_retries):
             r = None
             headers_sent = False
@@ -122,7 +122,7 @@ class DefaultProxyDelegate(BaseProxyDelegate):
                 if r.status_code == 404 and attempt < max_retries - 1:
                     if hasattr(r, 'close'):
                         try: r.close()
-                        except: pass
+                        except Exception: pass
                     time.sleep(1.0)
                     continue
                     
@@ -198,7 +198,7 @@ class DefaultProxyDelegate(BaseProxyDelegate):
             except Exception as e:
                 if r and hasattr(r, 'close'):
                     try: r.close()
-                    except: pass
+                    except Exception: pass
                 
                 err_str = str(e)
                 if "Broken pipe" in err_str or "Connection reset" in err_str:

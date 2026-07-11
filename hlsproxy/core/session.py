@@ -8,7 +8,7 @@ except ImportError:
 from hlsproxy.models import StreamInfo
 
 def create_session(stream: StreamInfo):
-    """Create a session configured for the stream with keep-alive pooling."""
+    """Create a session configured for the stream."""
     if HAS_CURL_CFFI:
         return cffi_requests.Session(
             impersonate=stream.impersonate,

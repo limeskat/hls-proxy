@@ -32,7 +32,7 @@ hlsproxy https://example.com/stream-page --resolvers-source https://github.com/u
 
 ### Options:
 * `--host <IP>`: Host IP to bind the proxy to (default: 0.0.0.0)
-* `--port <PORT>`: Specify local proxy port.
+* `--port <PORT>`: Specify local proxy port (default: 18888).
 * `--resolvers-source <DIR/URL>`: Path to a directory or a GitHub repo link containing external resolver scripts.
 * `--install-resolver <PATH>`: Install a custom resolver Python script into the config folder (`~/.config/hlsproxy/resolvers`).
 * `--remove-resolver <NAME>`: Remove an installed resolver by name (e.g. `foxtrend`).

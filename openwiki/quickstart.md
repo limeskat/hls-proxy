@@ -76,7 +76,6 @@ hlsproxy --remove-resolver foxtrend
 | `--list-resolvers` | List currently available resolvers |
 | `--install-resolver <PATH>` | Install a custom resolver script |
 | `--remove-resolver <NAME>` | Remove an installed resolver |
-| `--proxy <URL>` | Use upstream HTTP/SOCKS proxy |
 
 ## Architecture Overview
 

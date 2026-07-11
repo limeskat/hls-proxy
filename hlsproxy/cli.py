@@ -20,11 +20,9 @@ def get_available_port(host: str, start_port: int) -> int:
 
 def get_lan_ip():
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
-        s.close()
-        return ip
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
     except Exception:
         return "127.0.0.1"
 
@@ -171,9 +169,6 @@ def main():
     try:
         extra_args = [
             "--profile=fast",
-            "--hwdec=auto",
-            "--cache=yes",
-            "--demuxer-max-bytes=150M",
             "--demuxer-max-back-bytes=50M"
         ]
         

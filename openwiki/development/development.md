@@ -121,13 +121,13 @@ class CustomProxyDelegate(BaseProxyDelegate):
 **To use your delegate:**
 
 ```python
-from hlsproxy.core.custom_delegate import CustomProxyDelegate
+from hlsproxy.core.proxy_delegate import DefaultProxyDelegate
 
 result = ResolverResult(
     stream=StreamInfo(m3u8_url="https://example.com/stream.m3u8"),
     title="Custom Stream",
 )
-result.stream.proxy_delegate = CustomProxyDelegate
+result.stream.proxy_delegate = DefaultProxyDelegate
 ```
 
 ### 3. Modify CLI Arguments
