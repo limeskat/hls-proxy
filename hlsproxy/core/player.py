@@ -1,8 +1,9 @@
 import subprocess
 import shutil
+from typing import Optional
 
-def launch_mpv(url: str, title: str = "Stream", extra_args: list = None):
-    """Launch mpv with the stream URL."""
+def launch_mpv(url: str, title: str = "Stream", extra_args: list = None) -> Optional[subprocess.Popen]:
+    """Launch mpv with the stream URL. Returns the Popen process or None if mpv not found."""
     if not shutil.which("mpv"):
         raise FileNotFoundError("mpv is not installed or not found in $PATH.")
     
@@ -22,4 +23,4 @@ def launch_mpv(url: str, title: str = "Stream", extra_args: list = None):
     if extra_args:
         cmd.extend(extra_args)
     
-    subprocess.run(cmd)
+    return subprocess.Popen(cmd)

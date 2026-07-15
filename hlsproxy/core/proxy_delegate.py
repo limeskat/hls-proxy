@@ -64,20 +64,13 @@ class DefaultProxyDelegate(BaseProxyDelegate):
             if not stripped:
                 continue
 
-            # Rewrite URI="..." in EXT-X-KEY, EXT-X-MAP
-            if stripped.startswith("#EXT-X-KEY:") or stripped.startswith("#EXT-X-MAP:"):
-                def uri_replacer(match):
+            # Rewrite URI="..." in tags
+            if stripped.startswith(("EXT-X-KEY:", "EXT-X-MAP:", "EXT-X-MEDIA:")):
+                is_m3u8 = stripped.startswith("EXT-X-MEDIA:")
+                def uri_replacer(match, _m3u8=is_m3u8):
                     original_uri = match.group(1)
                     absolute_uri = urllib.parse.urljoin(url, original_uri)
-                    return f'URI="{make_proxy_url(absolute_uri, is_m3u8=False)}"'
-                lines[i] = re.sub(r'URI="([^"]+)"', uri_replacer, stripped)
-
-            # Rewrite URI="..." in EXT-X-MEDIA
-            elif stripped.startswith("#EXT-X-MEDIA:"):
-                def uri_replacer(match):
-                    original_uri = match.group(1)
-                    absolute_uri = urllib.parse.urljoin(url, original_uri)
-                    return f'URI="{make_proxy_url(absolute_uri, is_m3u8=True)}"'
+                    return f'URI="{make_proxy_url(absolute_uri, is_m3u8=_m3u8)}"'
                 lines[i] = re.sub(r'URI="([^"]+)"', uri_replacer, stripped)
 
             # Rewrite segment and sub-playlist URIs (lines not starting with #)
@@ -94,12 +87,15 @@ class DefaultProxyDelegate(BaseProxyDelegate):
 
         body = "\n".join(lines).encode("utf-8")
 
-        handler.send_response(200)
-        handler.send_header("Content-Type", "application/vnd.apple.mpegurl")
-        handler.send_header("Content-Length", str(len(body)))
-        handler.send_header("Cache-Control", "no-cache, no-store")
-        handler.end_headers()
-        handler.wfile.write(body)
+        try:
+            handler.send_response(200)
+            handler.send_header("Content-Type", "application/vnd.apple.mpegurl")
+            handler.send_header("Content-Length", str(len(body)))
+            handler.send_header("Cache-Control", "no-cache, no-store")
+            handler.end_headers()
+            handler.wfile.write(body)
+        except ConnectionError:
+            pass
 
     def handle_segment(self, handler, upstream_url, req_type="seg"):
         session = handler.server.session
@@ -201,7 +197,7 @@ class DefaultProxyDelegate(BaseProxyDelegate):
                     except Exception: pass
                 
                 err_str = str(e)
-                if "Broken pipe" in err_str or "Connection reset" in err_str:
+                if isinstance(e, ConnectionError) or "Broken pipe" in err_str or "Connection reset" in err_str:
                     break
                     
                 if not headers_sent and attempt < max_retries - 1:

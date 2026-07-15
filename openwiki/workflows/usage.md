@@ -136,10 +136,18 @@ hlsproxy https://example.com/stream-page --referer https://example.com/watch --o
 
 ### Note on Resolver Headers
 
-Resolvers can already inject headers. The `--referer` and `--origin` flags only apply if the resolver doesn't already capture these headers:
+Both `--referer` and `--origin` are forwarded to resolvers as keyword arguments (`referer`, `origin`), and also applied as header overrides if the resolver doesn't already set them:
 
 ```python
-# In cli.py
+# In cli.py — forwarded to resolver.resolve()
+kwargs = {}
+if args.referer:
+    kwargs["referer"] = args.referer
+if args.origin:
+    kwargs["origin"] = args.origin
+result = resolver.resolve(args.url, **kwargs)
+
+# Applied as overrides if resolver didn't set them
 if args.referer and "Referer" not in result.stream.headers:
     result.stream.headers["Referer"] = args.referer
 if args.origin and "Origin" not in result.stream.headers:
@@ -163,8 +171,6 @@ Available profiles: `chrome124`, `chrome118`, `firefox`, `safari`, etc.
 ```bash
 pip install curl_cffi
 ```
-
-If curl_cffi is not installed, hlsproxy falls back to standard requests with a basic User-Agent.
 
 ## Subtitles
 
@@ -227,7 +233,35 @@ If the stream doesn't play:
 3. Try `--no-play` to debug without mpv
 4. Check the proxy logs for errors
 
+### Container / systemd Shutdown
+
+hlsproxy handles `SIGTERM` and `SIGHUP` for graceful shutdown. When running in Docker or systemd, the proxy will clean up and exit cleanly on these signals.
+
 ## Advanced Usage
+
+### Use Upstream Proxy
+
+Route all requests through an HTTP/SOCKS5 proxy:
+
+```bash
+hlsproxy https://example.com/stream-page --proxy socks5://127.0.0.1:1080
+```
+
+This routes upstream requests (playlist fetches, segment downloads) through the specified proxy. The local proxy still binds to the specified host/port.
+
+### SSRF Protection
+
+By default, hlsproxy blocks requests to private/internal IP addresses to prevent SSRF attacks. This includes:
+- RFC 1918 ranges (10.x, 172.16.x, 192.168.x)
+- Loopback (127.x, ::1)
+- Link-local (169.254.x — covers cloud metadata endpoints)
+- IPv6 ULA and link-local
+
+If you need to proxy to internal services, use `--allow-private`:
+
+```bash
+hlsproxy https://example.com/stream-page --allow-private
+```
 
 ### Use Custom Headers
 

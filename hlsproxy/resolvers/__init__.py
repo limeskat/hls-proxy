@@ -65,31 +65,36 @@ def discover_resolvers(external_dir: str = None) -> List[Type[BaseResolver]]:
         if not os.path.isdir(abs_path):
             return
             
-        if abs_path not in sys.path:
+        path_added = abs_path not in sys.path
+        if path_added:
             sys.path.insert(0, abs_path)
             
-        for item in os.listdir(abs_path):
-            item_path = os.path.join(abs_path, item)
-            module_name = None
-            
-            if os.path.isfile(item_path) and item.endswith(".py") and item not in ("__init__.py", "base.py"):
-                module_name = item[:-3]
-            elif os.path.isdir(item_path) and os.path.isfile(os.path.join(item_path, "__init__.py")):
-                module_name = item
+        try:
+            for item in os.listdir(abs_path):
+                item_path = os.path.join(abs_path, item)
+                module_name = None
                 
-            if module_name:
-                try:
-                    module = importlib.import_module(module_name)
-                    for attr_name in dir(module):
-                        attr = getattr(module, attr_name)
-                        if (isinstance(attr, type) 
-                            and issubclass(attr, BaseResolver) 
-                            and attr is not BaseResolver
-                            and not getattr(attr, '_is_abstract', False)):
-                            if attr not in resolvers:
-                                resolvers.append(attr)
-                except Exception as e:
-                    print(f"[!] Failed to load external resolver {item}: {e}")
+                if os.path.isfile(item_path) and item.endswith(".py") and item not in ("__init__.py", "base.py"):
+                    module_name = item[:-3]
+                elif os.path.isdir(item_path) and os.path.isfile(os.path.join(item_path, "__init__.py")):
+                    module_name = item
+                    
+                if module_name:
+                    try:
+                        module = importlib.import_module(module_name)
+                        for attr_name in dir(module):
+                            attr = getattr(module, attr_name)
+                            if (isinstance(attr, type) 
+                                and issubclass(attr, BaseResolver) 
+                                and attr is not BaseResolver
+                                and not getattr(attr, '_is_abstract', False)):
+                                if attr not in resolvers:
+                                    resolvers.append(attr)
+                    except Exception as e:
+                        print(f"[!] Failed to load external resolver {item}: {e}")
+        finally:
+            if path_added:
+                sys.path.remove(abs_path)
 
     # Load persistent user resolvers
     config_dir = os.path.expanduser("~/.config/hlsproxy/resolvers")

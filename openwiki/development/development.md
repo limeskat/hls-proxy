@@ -13,15 +13,20 @@ hlsproxy/
 │   ├── models.py              # StreamInfo and ResolverResult dataclasses
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── proxy.py           # Local HTTP proxy server
+│   │   ├── proxy.py           # Local HTTP proxy server + SSRF protection
 │   │   ├── proxy_delegate.py  # Request handling and playlist/segment proxying
-│   │   ├── session.py         # HTTP session creation (curl_cffi or requests)
-│   │   └── player.py          # mpv launcher
+│   │   ├── session.py         # HTTP session creation (curl_cffi)
+│   │   └── player.py          # mpv launcher (returns Popen process)
 │   └── resolvers/
 │       ├── __init__.py        # Resolver discovery and loading
 │       ├── base.py            # BaseResolver abstract class
 │       └── generic.py         # GenericResolver (catch-all fallback)
-├── tests/                     # Tests (currently empty)
+├── tests/                     # Test suite (pytest)
+│   ├── test_models.py         # StreamInfo and ResolverResult tests
+│   ├── test_resolvers.py      # Resolver discovery, domain matching, find_resolver
+│   ├── test_proxy.py          # SSRF protection (is_safe_url, is_loopback_url)
+│   ├── test_session.py        # Session creation with headers/cookies/proxy
+│   └── test_cli.py            # Port scanning, get_lan_ip
 ├── pyproject.toml             # Project metadata and dependencies
 └── README.md                  # User documentation
 ```
@@ -184,13 +189,26 @@ Use the strict format: `- type: message`
 
 ### Testing Framework
 
-The project uses `pytest` for testing.
+The project uses `pytest` for testing. Install dev dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
 
 ### Test Location
 
-All tests must reside in `/tests` directory at the project root.
+All tests reside in the `tests/` directory at the project root:
 
-### Mocking Network Requests
+```
+tests/
+├── test_models.py         # StreamInfo and ResolverResult dataclasses
+├── test_resolvers.py      # Resolver discovery, domain matching, find_resolver
+├── test_proxy.py          # SSRF protection (is_safe_url, is_loopback_url)
+├── test_session.py        # Session creation with headers/cookies/proxy
+└── test_cli.py            # Port scanning, get_lan_ip
+```
+
+### Writing Tests
 
 When testing components, always mock network requests to avoid slow, stateful integration tests:
 
@@ -232,7 +250,7 @@ The core repository (`hlsproxy/`) must remain a neutral HTTP proxy. **DO NOT** a
 
 Do not modify `pyproject.toml` to add heavy evasion libraries like `playwright` or `playwright-stealth`. These should only be used in external resolvers if needed.
 
-**Exception:** `curl_cffi` is an allowed optional core dependency for TLS fingerprinting support via `session.py`, and standard libraries like `requests` are acceptable.
+**Exception:** `curl_cffi` is an allowed core dependency for TLS fingerprinting support via `session.py`.
 
 ### Resolver Boundaries
 
@@ -240,6 +258,16 @@ Do not modify `pyproject.toml` to add heavy evasion libraries like `playwright` 
 - All new site support must be developed as external plugins
 - The core repository only hosts `BaseResolver` and `GenericResolver`
 - External resolvers are loaded dynamically via `--resolvers-source` CLI flag
+
+### SSRF Protection
+
+The proxy server (`core/proxy.py`) validates all upstream URLs before fetching them. Requests to private/internal IPs (RFC 1918, loopback, link-local, cloud metadata) are blocked by default. This prevents SSRF attacks when the proxy is bound to `0.0.0.0`.
+
+Key functions:
+- `is_safe_url(url)` — resolves hostname and checks against blocked networks
+- `is_loopback_url(url)` — allows proxy-to-itself traffic (always permitted)
+
+To bypass (e.g., for testing against local services), use `--allow-private`.
 
 ## Dependencies
 
@@ -250,8 +278,12 @@ Do not modify `pyproject.toml` to add heavy evasion libraries like `playwright` 
 ```toml
 [project]
 dependencies = [
-    "curl_cffi>=0.5.0",  # Optional, for TLS fingerprinting
-    "requests>=2.25.0",  # Required, for HTTP requests
+    "curl_cffi>=0.5.0",  # Required, for TLS fingerprinting
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",  # For running tests
 ]
 ```
 
@@ -328,14 +360,14 @@ class MyResolver(BaseResolver):
 
 ### Parsing HTML
 
-Use `requests` directly in resolvers:
+Use `curl_cffi` in resolvers:
 
 ```python
-import requests
+from curl_cffi import requests
 
 class MyResolver(BaseResolver):
     def _get_session(self):
-        return requests.Session()
+        return requests.Session(impersonate="chrome124")
 
     def resolve(self, url: str, **kwargs) -> ResolverResult:
         session = self._get_session()

@@ -143,7 +143,7 @@ result.stream.proxy_delegate = CustomProxyDelegate
 
 ## Session Management
 
-The proxy uses `curl_cffi` when available for TLS fingerprint spoofing, falling back to `requests`:
+The proxy uses `curl_cffi` for TLS fingerprint spoofing:
 
 ```python
 # Create session with impersonation

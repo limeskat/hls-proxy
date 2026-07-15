@@ -175,7 +175,7 @@ class MySiteResolver(BaseResolver):
         )
 
     def _extract_m3u8(self, url: str) -> str:
-        # Use requests or curl_cffi to fetch page
+        # Use curl_cffi to fetch page
         # Parse HTML/JSON to find m3u8 URL
         pass
 ```
@@ -188,6 +188,5 @@ class MySiteResolver(BaseResolver):
 ## Limitations
 
 - **No site logic in core:** Site-specific scraping logic must live in external resolvers
-- **Core repository neutrality:** Do not add evasion libraries (curl_cffi, playwright) to `pyproject.toml`
 - **Single URL resolution:** Resolvers handle one URL at a time
 - **No streaming extraction:** Resolvers must return a complete m3u8 URL, not stream segments directly

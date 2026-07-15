@@ -33,6 +33,8 @@ hlsproxy https://example.com/stream-page --resolvers-source https://github.com/u
 ### Options:
 * `--host <IP>`: Host IP to bind the proxy to (default: 0.0.0.0)
 * `--port <PORT>`: Specify local proxy port (default: 18888).
+* `--proxy <URL>`: Route requests through an upstream HTTP/SOCKS5 proxy (e.g. `socks5://127.0.0.1:1080`).
+* `--allow-private`: Allow proxying to private/internal IPs (disables SSRF protection).
 * `--resolvers-source <DIR/URL>`: Path to a directory or a GitHub repo link containing external resolver scripts.
 * `--install-resolver <PATH>`: Install a custom resolver Python script into the config folder (`~/.config/hlsproxy/resolvers`).
 * `--remove-resolver <NAME>`: Remove an installed resolver by name (e.g. `foxtrend`).
@@ -41,6 +43,21 @@ hlsproxy https://example.com/stream-page --resolvers-source https://github.com/u
 * `--no-play`: Start proxy without launching mpv.
 * `--referer <URL>`: Manually override the Referer header (useful for bypassing strict 403/410 errors).
 * `--origin <URL>`: Manually override the Origin header.
+
+## Testing
+
+```bash
+pip install -e ".[dev]"
+pytest tests/
+```
+
+## Security
+
+By default, hlsproxy blocks proxying requests to private/internal IP addresses (RFC 1918, link-local, loopback, cloud metadata endpoints). This prevents SSRF attacks when the proxy is bound to `0.0.0.0`. To override this behavior:
+
+```bash
+hlsproxy https://example.com/stream --allow-private
+```
 
 ---
 ## Documentation

@@ -68,6 +68,8 @@ hlsproxy --remove-resolver foxtrend
 |--------|-------------|
 | `--host <IP>` | Host IP to bind the proxy (default: 0.0.0.0) |
 | `--port <PORT>` | Local proxy port (default: 18888) |
+| `--proxy <URL>` | Route requests through an upstream HTTP/SOCKS5 proxy |
+| `--allow-private` | Allow proxying to private/internal IPs (disables SSRF protection) |
 | `--impersonate <PROFILE>` | TLS fingerprint profile (e.g., `chrome124`) |
 | `--no-play` | Start proxy without launching mpv |
 | `--referer <URL>` | Manually override Referer header |
@@ -76,6 +78,14 @@ hlsproxy --remove-resolver foxtrend
 | `--list-resolvers` | List currently available resolvers |
 | `--install-resolver <PATH>` | Install a custom resolver script |
 | `--remove-resolver <NAME>` | Remove an installed resolver |
+
+## Security
+
+By default, hlsproxy blocks proxying requests to private/internal IP addresses (RFC 1918, link-local, loopback, cloud metadata endpoints). This prevents SSRF attacks when the proxy is bound to `0.0.0.0`. To override this behavior:
+
+```bash
+hlsproxy https://example.com/stream --allow-private
+```
 
 ## Architecture Overview
 
@@ -86,7 +96,7 @@ hlsproxy consists of several key components:
 - **Proxy Delegate (`hlsproxy/core/proxy_delegate.py`)**: Handles request rewriting and header manipulation
 - **Player (`hlsproxy/core/player.py`)**: mpv launcher
 - **Resolver System (`hlsproxy/resolvers/`)**: Plugin system for extracting streams from protected sites
-- **Session Management (`hlsproxy/core/session.py`)**: HTTP session handling with curl_cffi or requests
+- **Session Management (`hlsproxy/core/session.py`)**: HTTP session handling with curl_cffi
 
 ## Next Steps
 
@@ -109,6 +119,10 @@ If you encounter 403 Forbidden or 410 Gone errors on supported sites, try using 
 ```bash
 hlsproxy https://example.com/video --referer https://example.com/
 ```
+
+### Signal Handling
+
+hlsproxy handles `SIGTERM` and `SIGHUP` for graceful shutdown. This is important when running in Docker or systemd, where `SIGTERM` is the standard shutdown signal. The proxy will clean up and exit on these signals.
 
 ## Legal Disclaimer
 

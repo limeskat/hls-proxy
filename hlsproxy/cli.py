@@ -1,4 +1,5 @@
 import sys
+import signal
 import argparse
 import socket
 import urllib.parse
@@ -46,6 +47,9 @@ def main():
     parser.add_argument("--remove-resolver", help="Remove an installed resolver by name (e.g. 'foxtrend')")
     parser.add_argument("--referer", help="Manually override the Referer header")
     parser.add_argument("--origin", help="Manually override the Origin header")
+    parser.add_argument("--proxy", help="Upstream HTTP/SOCKS5 proxy URL (e.g. socks5://127.0.0.1:1080)")
+    parser.add_argument("--allow-private", action="store_true",
+                        help="Allow proxying to private/internal IPs (SSRF bypass)")
     
     args = parser.parse_args()
     
@@ -117,6 +121,8 @@ def main():
         kwargs = {}
         if args.referer:
             kwargs["referer"] = args.referer
+        if args.origin:
+            kwargs["origin"] = args.origin
         result = resolver.resolve(args.url, **kwargs)
     except ResolverError as e:
         print(f"[!] Resolution failed: {e}")
@@ -127,6 +133,10 @@ def main():
     
     # Override impersonate if user specified
     result.stream.impersonate = args.impersonate
+    
+    # Apply upstream proxy if specified
+    if args.proxy:
+        result.stream.proxy = args.proxy
     
     # Apply manual header overrides only if not already captured by the resolver
     if args.referer and "Referer" not in result.stream.headers:
@@ -143,7 +153,7 @@ def main():
         print(f"[*] Port {args.port} in use. Using next available port: {port}")
     
     print(f"[*] Starting proxy...")
-    server = start_proxy(result.stream, host=args.host, port=port)
+    server = start_proxy(result.stream, host=args.host, port=port, allow_private=args.allow_private)
     
     local_url = f"http://127.0.0.1:{port}/playlist.m3u8"
     lan_url = f"http://{get_lan_ip()}:{port}/playlist.m3u8"
@@ -154,6 +164,14 @@ def main():
     if args.host == "0.0.0.0":
         print(f"[+] LAN STREAM URL   : {lan_url}")
     print(f"==================================================\n")
+    
+    def _shutdown_handler(signum, frame):
+        print(f"\n[*] Received signal {signum}, shutting down.")
+        server.shutdown()
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, _shutdown_handler)
+    signal.signal(signal.SIGHUP, _shutdown_handler)
     
     if args.no_play:
         print(f"[*] Proxy running. Press Ctrl+C to stop.")
@@ -178,7 +196,10 @@ def main():
                 sub_proxy_url = f"http://127.0.0.1:{port}/req.vtt?type=sub&url={encoded_sub_url}"
                 extra_args.append(f"--sub-file={sub_proxy_url}")
                 
-        launch_mpv(local_url, title=f"{result.title} (Local Port: {port})", extra_args=extra_args)
+        proc = launch_mpv(local_url, title=f"{result.title} (Local Port: {port})", extra_args=extra_args)
+        proc.wait()
+        if proc.returncode != 0:
+            print(f"[!] mpv exited with code {proc.returncode}")
     except FileNotFoundError as e:
         print(f"[!] Error: {e}")
         print("[!] Please install mpv and ensure it is in your system's $PATH.")
